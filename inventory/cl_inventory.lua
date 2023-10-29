@@ -43,12 +43,45 @@ local function InventoryToggle()
 
     gui.EnableScreenClicker(Inventory.Boolean)
 
+    function Inventory.Frame:OnKeyCodePressed(key)
+
+        local lookup = input.LookupBinding("gm_showspare2")
+
+        local keyBind = input.GetKeyName(key)
+
+        if lookup == keyBind then
+
+            Inventory.Boolean = !Inventory.Boolean
+
+            Inventory.Frame:SetVisible(Inventory.Boolean)
+
+            gui.EnableScreenClicker(Inventory.Boolean)
+
+            Inventory.Frame:Remove()
+
+            Inventory.Frame = nil
+
+        end
+
+    end
+
 
     local backPanel = CheadleUI.Panel(Inventory.Frame, Color(15,15,15))
 
-    CheadleUI.SetSize(backPanel, 99.2, 92.5)
+    CheadleUI.SetSize(backPanel, 99.2, 86)
 
     CheadleUI.SetPos(backPanel, 0.5, 0, 99.2, 4)
+
+
+    local searchbar = CheadleUI.Textbox(Inventory.Frame, CheadleUI.GetFont("Montserrat", 18), Color(15,15,15))
+    
+    CheadleUI.SetSize(searchbar, 30, 5)
+
+    CheadleUI.SetPos(searchbar, 0.5, 0, 7.3, 3)
+
+    searchbar:SetPlaceholderText("Search...")
+
+    searchbar:SetCursorColor(Color(255,255,255))
 
 
     local scrollPanel = vgui.Create("DScrollPanel", backPanel)
@@ -229,6 +262,7 @@ local function InventoryToggle()
             
             buttonPanel:SetCursor("sizeall")
 
+            
             CheadleUI.Popup(buttonPanel, function(x, y)
 
                 surface.SetFont(CheadleUI.GetFont("Montserrat", 18))
@@ -254,7 +288,33 @@ local function InventoryToggle()
 
     end
 
+
+    searchbar.OnValueChange = function(self, value)
+
+        for i = 1, Inventory.MaxSlots do
+            
+            local inInventory = LocalPlayer().Inventory[i]
+
+            local itemData
+
+            if inInventory then
+                
+                itemData = Inventory.Items[inInventory.item]
+
+                local shouldShow = string.find(string.lower(itemData.name), string.lower(value)) or value == ""
+
+                local itemPanel = layoutPanel:GetChildren()[i]
+
+                itemPanel:SetAlpha(shouldShow and 255 or 20)
+
+            end
+
+        end
+
+    end
+
 end
+
 
 
 local dragged
