@@ -35,18 +35,14 @@ Inventory.CreateInventoryItem("Toolgun", {
 
     description = "A toolgun",
 
-})
+    settings = {
 
-Inventory.CreateInventoryItem("Shotun", {
+        fov = 12.31,
 
-    class = "weapon_shotgun",
+        pos = Vector(-2, 3, 38),
 
-    category = "weapon",
+        rot = Angle(0, -99, 0)
 
-    model = "models/weapons/w_shotgun.mdl",
-
-    rarity = 1,
-
-    description = "A shotgun",
+    },
 
 })

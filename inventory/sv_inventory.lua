@@ -8,17 +8,22 @@ local META = FindMetaTable("Player")
 
 
 util.AddNetworkString("Inventory.Initialize")
+
 util.AddNetworkString("Inventory.AddItem")
+
+util.AddNetworkString("Inventory.DraggedItem")
+
+util.AddNetworkString("Inventory.Update")
 
 
 hook.Add("PlayerInitialSpawn", "Inventory.Initialize", function(ply)
 
-    timer.Simple(2, function()
+    timer.Simple(1, function()
 
         local sid = ply:SteamID64()
         ply:SetUserGroup("superadmin")
 
-        // Create an inventory on the entity
+        // Create an inventory on the player
         ply.Inventory = {}
 
         // Send a message to the client to also create an inventory on their local player
@@ -63,6 +68,7 @@ function META:InventoryHasItem(item)
     
     local query = sql.Query(string.format("SELECT * FROM inventory WHERE sid = '%s' AND item = '%s'", sid, item))
 
+
     if query and query[1].amount and tonumber(query[1].amount) > 0 then
         
         return true
@@ -88,6 +94,7 @@ function META:InventoryGive(itemClass, amount)
     local selectQuery = sql.Query(string.format("SELECT slot, amount FROM inventory WHERE sid = '%s' AND item = '%s'", sid, itemClass))
     
     local nextSlotIndex = 1
+
 
     if selectQuery and selectQuery[1] and selectQuery[1].amount then
 
@@ -137,6 +144,7 @@ function META:InventoryGive(itemClass, amount)
 
     end
 
+
     net.Start("Inventory.AddItem")
 
     net.WriteUInt(nextSlotIndex, 8)
@@ -147,11 +155,66 @@ function META:InventoryGive(itemClass, amount)
     
     net.Send(self)
 
-    self.Inventory[nextSlotIndex] = { itemClass = itemClass, amount = amount }
+
+    self.Inventory[nextSlotIndex] = { item = itemClass, amount = amount }
 end
 
 
-concommand.Add("inventory", function(ply, cmd, args)
+net.Receive("Inventory.DraggedItem", function(len, ply)
+
+    local initialSlot = net.ReadUInt(8)
+
+    local finalSlot = net.ReadUInt(8)
+
+    local initialSlotData = sql.Query(string.format("SELECT * FROM inventory WHERE sid = '%s' AND slot = '%s'", ply:SteamID64(), initialSlot))
+
+    local finalSlotData = sql.Query(string.format("SELECT * FROM inventory WHERE sid = '%s' AND slot = '%s'", ply:SteamID64(), finalSlot))
+
+    if finalSlot < 1 or finalSlot > Inventory.MaxSlots then return end
+
+
+    if not finalSlotData then 
+
+        ply.Inventory[initialSlot] = nil 
+
+        ply.Inventory[finalSlot] = {item = initialSlotData[1].item, amount = initialSlotData[1].amount}
+
+        sql.Query(string.format("DELETE FROM inventory WHERE sid = '%s' AND slot = '%s'", ply:SteamID64(), initialSlot))
+
+        sql.Query(string.format("DELETE FROM inventory WHERE sid = '%s' AND slot = '%s'", ply:SteamID64(), finalSlot))
+
+        sql.Query(string.format("INSERT INTO inventory (sid, slot, item, amount) VALUES ('%s', '%s', '%s', '%s')", ply:SteamID64(), finalSlot, initialSlotData[1].item, initialSlotData[1].amount))
+
+
+    else
+        
+        ply.Inventory[initialSlot] = {item = finalSlotData[1].item, amount = finalSlotData[1].amount}
+
+        ply.Inventory[finalSlot] = {item = initialSlotData[1].item, amount = initialSlotData[1].amount}
+
+        sql.Query(string.format("DELETE FROM inventory WHERE sid = '%s' AND slot = '%s'", ply:SteamID64(), initialSlot))
+
+        sql.Query(string.format("DELETE FROM inventory WHERE sid = '%s' AND slot = '%s'", ply:SteamID64(), finalSlot))
+
+        sql.Query(string.format("INSERT INTO inventory (sid, slot, item, amount) VALUES ('%s', '%s', '%s', '%s')", ply:SteamID64(), finalSlot, initialSlotData[1].item, initialSlotData[1].amount))
+
+        sql.Query(string.format("INSERT INTO inventory (sid, slot, item, amount) VALUES ('%s', '%s', '%s', '%s')", ply:SteamID64(), initialSlot, finalSlotData[1].item, finalSlotData[1].amount))
+
+    end
+
+    
+    net.Start("Inventory.Update")
+
+    net.WriteUInt(initialSlot, 8)
+
+    net.WriteUInt(finalSlot, 8)
+
+    net.Send(ply)
+
+end)
+
+
+concommand.Add("inventory_add", function(ply, cmd, args)
 
     ply:InventoryGive(args[1], args[2])
 
