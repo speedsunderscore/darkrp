@@ -9,3 +9,4 @@ UPDATE 29/10/2023
 - CheadleUI Library ~ https://github.com/codabro/cheadleui
 - Item backgrounds
 - Item popups when hovering
+- Item searching
