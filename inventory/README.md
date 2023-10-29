@@ -12,3 +12,4 @@ UPDATE 29/10/2023
 - Item backgrounds
 - Item popups when hovering
 - Item searching
+- Item equipping and removing
