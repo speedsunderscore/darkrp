@@ -13,6 +13,10 @@ util.AddNetworkString("Inventory.AddItem")
 
 util.AddNetworkString("Inventory.DraggedItem")
 
+util.AddNetworkString("Inventory.EquipItem")
+
+util.AddNetworkString("Inventory.RemoveItem")
+
 
 hook.Add("PlayerInitialSpawn", "Inventory.Initialize", function(ply)
 
@@ -159,6 +163,50 @@ function META:InventoryGive(itemClass, amount)
 end
 
 
+function META:InventoryRemove(item, amount)
+
+    local sid = self:SteamID64()
+
+    if not Inventory.Items[item] then return end
+
+    local selectQuery = sql.Query(string.format("SELECT slot, amount FROM inventory WHERE sid = '%s' AND item = '%s'", sid, item))
+
+    if not selectQuery then return end
+
+    local current = tonumber(selectQuery[1].amount)
+
+    if current <= amount then
+
+        sql.Query(string.format("DELETE FROM inventory WHERE sid = '%s' AND item = '%s'", sid, item))
+
+        self.Inventory[selectQuery[1].slot] = nil
+
+        current = 0
+
+    else
+        
+        current = current - amount
+
+        sql.Query(string.format("UPDATE inventory SET amount = '%s' WHERE sid = '%s' AND item = '%s'", current, sid, item))
+
+        self.Inventory[selectQuery[1].slot] = {item = item, amount = current}
+
+    end
+
+
+    net.Start("Inventory.RemoveItem")
+
+    net.WriteUInt(selectQuery[1].slot, 8)
+
+    net.WriteString(item)
+
+    net.WriteUInt(current, 32)
+
+    net.Send(self)
+
+end
+
+
 // Networking slots so we can drag items around
 net.Receive("Inventory.DraggedItem", function(len, ply)
 
@@ -211,6 +259,48 @@ net.Receive("Inventory.DraggedItem", function(len, ply)
     net.WriteUInt(finalSlot, 8)
 
     net.Send(ply)
+
+end)
+
+
+Inventory.EquipFunctions = {
+
+    weapon = function(item, ply)
+
+        if not ply:Alive() then return false end
+
+        if ply:HasWeapon(item) then return false end
+
+        ply:Give(item)
+
+        ply:SelectWeapon(item)
+
+        return true
+
+    end,
+
+}
+
+
+net.Receive("Inventory.EquipItem", function(len, ply)
+
+    local slot = net.ReadUInt(8)
+
+    local class = net.ReadString()
+
+
+    if ply.Inventory[slot] and ply.Inventory[slot].item == class then
+
+
+        local equipFunction = Inventory.EquipFunctions[Inventory.Items[class].category](class, ply)
+
+        if equipFunction then
+            
+            ply:InventoryRemove(class, 1)
+
+        end
+
+    end
 
 end)
 
