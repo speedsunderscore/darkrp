@@ -226,11 +226,21 @@ local function InventoryToggle()
 
             local menu = DermaMenu()
 
-            menu:AddOption("Use", function()
+            if itemData.category == "weapon" then
 
-                print("Used")
+                menu:AddOption("Equip " .. itemData.name, function()
 
-            end)
+                    net.Start("Inventory.EquipItem")
+
+                    net.WriteUInt(i, 8)
+
+                    net.WriteString(inInventory.item)
+
+                    net.SendToServer()
+
+                end)
+
+            end
 
 
             for k, v in pairs(menu:GetCanvas():GetChildren()) do
@@ -406,6 +416,35 @@ net.Receive("Inventory.DraggedItem", function()
 
 end)
 
+
+net.Receive("Inventory.RemoveItem", function()
+
+    local slot = net.ReadUInt(8)
+
+    local item = net.ReadString()
+
+    local amount = net.ReadUInt(32)
+
+
+    if amount == 0 then
+        
+        LocalPlayer().Inventory[slot] = nil
+
+    else
+        
+        LocalPlayer().Inventory[slot] = {item = item, amount = amount}
+
+    end
+
+    if Inventory.Frame then
+            
+        InventoryToggle()
+
+        InventoryToggle()
+
+    end
+
+end)
 
 hook.Add("PlayerBindPress", "Inventory.F4", function(ply, bind, pressed)
 
