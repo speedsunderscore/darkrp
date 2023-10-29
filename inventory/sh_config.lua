@@ -2,7 +2,7 @@ Inventory = Inventory or {}
 
 Inventory.Items = Inventory.Items or {}
 
-Inventory.MaxSlots = 55
+Inventory.MaxSlots = 20
 
 Inventory.Raritys = {
 
