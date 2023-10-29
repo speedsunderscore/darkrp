@@ -91,7 +91,7 @@ function CheadleUI.Frame(w, h, title, font, color, color_top, closeBtn, blur)
     frame:SetTitle("")
     frame:SetSize(w, h)
     frame:Center()
-    //frame:MakePopup()
+    frame:MakePopup()
     gui.EnableScreenClicker(true)
     frame:ShowCloseButton(false)
     frame:SetDraggable(false)
@@ -209,7 +209,7 @@ function CheadleUI.Combobox(panel, bgcolor, hovercolor, bordercolor, font)
     local combo = vgui.Create("DComboBox", panel)
     CheadleUI.SetPos(combo, 100, 2, 50, 1)
     combo.Paint = function(s, w, h)
-        draw.RoundedBox(0, 0, 0, w, h, bgcolor)
+        draw.RoundedBox(4, 0, 0, w, h, bgcolor)
     end
     combo:SetTextColor(color_white)
     if font then
@@ -255,6 +255,7 @@ function CheadleUI.Textbox(panel, font, bgColor)
         end
     
         s:DrawTextEntryText(color_white, s:GetHighlightColor(), s:GetCursorColor())
+
     end
 
     return input
