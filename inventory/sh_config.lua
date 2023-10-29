@@ -2,7 +2,7 @@ Inventory = Inventory or {}
 
 Inventory.Items = Inventory.Items or {}
 
-Inventory.MaxSlots = 20
+Inventory.MaxSlots = 55
 
 Inventory.Raritys = {
 
@@ -77,6 +77,35 @@ Inventory.CreateInventoryItem("Bug Bait", {
         pos = Vector(0, 0, 40),
 
         rot = Angle(0, 0, 0)
+
+    }
+
+})
+
+
+Inventory.CreateInventoryItem("S.L.A.M", {
+
+    class = "weapon_slam",
+
+    category = "misc",
+
+    model = "models/weapons/w_slam.mdl",
+
+    rarity = 1,
+
+    background = "items/polygon.png",
+
+    showRarityColor = true,
+
+    pos = 0,
+
+    settings = {
+
+        fov = 11.81,
+
+        pos = Vector(0, 0, 41),
+
+        rot = Angle(0, -18, -38)
 
     }
 
