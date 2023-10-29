@@ -1,7 +1,6 @@
 Inventory = Inventory or {}
 
 
-
 // Create an inventory on the local player
 net.Receive("Inventory.Initialize", function()
 
@@ -25,7 +24,6 @@ net.Receive("Inventory.AddItem", function()
     LocalPlayer().Inventory[slot] = {item = item, amount = amount}
 
 end)
-
 
 
 local function InventoryToggle()
