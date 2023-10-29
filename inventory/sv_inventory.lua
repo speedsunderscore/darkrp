@@ -13,8 +13,6 @@ util.AddNetworkString("Inventory.AddItem")
 
 util.AddNetworkString("Inventory.DraggedItem")
 
-util.AddNetworkString("Inventory.Update")
-
 
 hook.Add("PlayerInitialSpawn", "Inventory.Initialize", function(ply)
 
@@ -145,6 +143,7 @@ function META:InventoryGive(itemClass, amount)
     end
 
 
+    // Send the client the new item
     net.Start("Inventory.AddItem")
 
     net.WriteUInt(nextSlotIndex, 8)
@@ -160,6 +159,7 @@ function META:InventoryGive(itemClass, amount)
 end
 
 
+// Networking slots so we can drag items around
 net.Receive("Inventory.DraggedItem", function(len, ply)
 
     local initialSlot = net.ReadUInt(8)
@@ -203,7 +203,8 @@ net.Receive("Inventory.DraggedItem", function(len, ply)
     end
 
     
-    net.Start("Inventory.Update")
+    // Send the client the new slot data
+    net.Start("Inventory.DraggedItem")
 
     net.WriteUInt(initialSlot, 8)
 

@@ -10,6 +10,8 @@ Inventory.Raritys = {
     
     [2] = {name  = "Uncommon", color = Color(63,141,63)},
 
+    [3] = {name  = "Rare", color = Color(65,127,151)},
+
 }
 
 
@@ -33,7 +35,11 @@ Inventory.CreateInventoryItem("Toolgun", {
 
     rarity = 1,
 
-    description = "A toolgun",
+    background = "items/polygon.png",
+
+    showRarityColor = true,
+
+    pos = 0,
 
     settings = {
 
@@ -44,5 +50,34 @@ Inventory.CreateInventoryItem("Toolgun", {
         rot = Angle(0, -99, 0)
 
     },
+
+})
+
+
+Inventory.CreateInventoryItem("Bug Bait", {
+
+    class = "weapon_bugbait",
+
+    category = "weapon",
+
+    model = "models/weapons/w_bugbait.mdl",
+
+    rarity = 3,
+
+    background = "items/polygon.png",
+
+    showRarityColor = true,
+
+    pos = 0,
+
+    settings = {
+
+        fov = 5.78,
+
+        pos = Vector(0, 0, 40),
+
+        rot = Angle(0, 0, 0)
+
+    }
 
 })
