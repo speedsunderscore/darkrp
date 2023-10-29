@@ -6,8 +6,6 @@ net.Receive("Inventory.Initialize", function()
 
     LocalPlayer().Inventory = {}
 
-    print("Inventory initialized")
-
 end)
 
 
@@ -37,7 +35,7 @@ local function InventoryToggle()
     end
 
 
-    Inventory.Frame = Inventory.Frame or CheadleUI.Frame(ScrW() * 0.5, ScrH() * 0.5, "Inventory", CheadleUI.GetFont("Montserrat", 30), Color(20,20,20), Color(40,40,40), true, false)
+    Inventory.Frame = Inventory.Frame or CheadleUI.Frame(ScrW() * 0.5, ScrH() * 0.5, "Inventory", CheadleUI.GetFont("Montserrat", 30), Color(20,20,20), Color(40,40,40), false, false)
 
     Inventory.Boolean = !Inventory.Boolean
 
@@ -90,25 +88,25 @@ local function InventoryToggle()
         itemPanel:SetSize(backPanel:GetWide() / 9 - 5, backPanel:GetWide()/9)
 
         itemPanel.Paint = function(self, w, h)
-
-            if inInventory then
-
-                surface.SetDrawColor(Inventory.Raritys[itemData.rarity].color)
-
-                surface.SetMaterial(Material("gui/gradient_up", "smooth"))
-
-                surface.DrawTexturedRect(0,0,w,h)
                 
-            else
-                
-                draw.RoundedBox(4,0,0,w,h,Color(40,40,40))
-
-            end
+                draw.RoundedBox(0,0,0,w,h,Color(40,40,40))
 
         end
 
 
+
         if inInventory then
+
+            local image = vgui.Create("DImage", itemPanel)
+            
+            image:SetImage(itemData.background)
+
+            image:SetImageColor(Inventory.Raritys[itemData.rarity].color)
+
+            image:SetSize(itemPanel:GetTall(), itemPanel:GetTall())
+
+            CheadleUI.SetPos(image, 50, 1, itemData.pos or 0, 0)
+
                 
             local icon = vgui.Create("DModelPanel", itemPanel)
 
@@ -153,7 +151,7 @@ local function InventoryToggle()
 
                 end
 
-                draw.RoundedBoxEx(0, 0, 0, w, h, Color(0,0,0,240), true, true, false, false)
+                draw.RoundedBoxEx(0, 0, 0, w, h, Color(0,0,0,255), true, true, false, false)
 
                 draw.SimpleText(itemData.name, CheadleUI.GetFont("Montserrat", size), w/2, h/2, Color(255,255,255), TEXT_ALIGN_CENTER, TEXT_ALIGN_CENTER)
 
@@ -164,7 +162,7 @@ local function InventoryToggle()
 
             CheadleUI.SetSize(itemAmount, 100, 15)
 
-            CheadleUI.SetPos(itemAmount, 0, 0, 100, 4)
+            CheadleUI.SetPos(itemAmount, 1, 0, 100, 4)
 
             itemAmount.Paint = function(self, w, h)
 
@@ -172,7 +170,7 @@ local function InventoryToggle()
 
                 local textWidth, textHeight = surface.GetTextSize(inInventory.amount .. "x")
 
-                draw.SimpleText(inInventory.amount .. "x", CheadleUI.GetFont("Montserrat", 15), textWidth - 1, h - textHeight/2, Color(255,255,255), TEXT_ALIGN_CENTER, TEXT_ALIGN_CENTER)
+                draw.SimpleText(inInventory.amount .. "x", CheadleUI.GetFont("Montserrat", 15), 1, h - textHeight/2, Color(255,255,255), TEXT_ALIGN_LEFT, TEXT_ALIGN_CENTER)
 
             end
 
@@ -230,6 +228,27 @@ local function InventoryToggle()
         if inInventory then
             
             buttonPanel:SetCursor("sizeall")
+
+            CheadleUI.Popup(buttonPanel, function(x, y)
+
+                surface.SetFont(CheadleUI.GetFont("Montserrat", 18))
+
+                local textWidth, textHeight = surface.GetTextSize(itemData.name)
+
+                surface.SetFont(CheadleUI.GetFont("Montserrat", 12))
+
+                local rarityWidth, rarityHeight = surface.GetTextSize(Inventory.Raritys[itemData.rarity].name)
+                
+
+                local padding = 3
+
+                draw.RoundedBox(4, x - padding + 15, y - padding - 6 - rarityHeight, textWidth + padding * 2, textHeight + padding * 2 + rarityHeight, Color(20,20,20))
+
+                draw.SimpleText(itemData.name, CheadleUI.GetFont("Montserrat", 18), x + 15, y - 6 - rarityHeight, Color(255,255,255), TEXT_ALIGN_LEFT, TEXT_ALIGN_TOP)
+
+                draw.SimpleText(Inventory.Raritys[itemData.rarity].name, CheadleUI.GetFont("Montserrat", 12), x + 15, y , Inventory.Raritys[itemData.rarity].color, TEXT_ALIGN_LEFT, TEXT_ALIGN_TOP)
+
+            end)
 
         end
 
@@ -295,7 +314,7 @@ hook.Add("CreateMove", "Inventory.DragAndDrop", function()
 end)
 
 
-net.Receive("Inventory.Update", function()
+net.Receive("Inventory.DraggedItem", function()
 
     local oldSlot = net.ReadUInt(8)
 
