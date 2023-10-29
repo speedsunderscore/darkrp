@@ -127,7 +127,6 @@ local function InventoryToggle()
         end
 
 
-
         if inInventory then
 
             local image = vgui.Create("DImage", itemPanel)
@@ -314,7 +313,6 @@ local function InventoryToggle()
     end
 
 end
-
 
 
 local dragged
