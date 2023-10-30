@@ -13,3 +13,7 @@ UPDATE 29/10/2023
 - Item popups when hovering
 - Item searching
 - Item equipping and removing
+
+
+UPDATE 30/10/2023
+- Improved networking on init
