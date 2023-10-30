@@ -6,3 +6,8 @@ UPDATE 29/10/2023
 
 - cl_mining
 - Minerals tab
+
+UPDATE 30/10/2023
+- Add/Removing ores
+- Networking
+- Buy / Sell button
