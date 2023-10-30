@@ -11,6 +11,8 @@ util.AddNetworkString("Inventory.Initialize")
 
 util.AddNetworkString("Inventory.AddItem")
 
+util.AddNetworkString("Inventory.AddInitItem")
+
 util.AddNetworkString("Inventory.DraggedItem")
 
 util.AddNetworkString("Inventory.EquipItem")
@@ -43,18 +45,13 @@ hook.Add("PlayerInitialSpawn", "Inventory.Initialize", function(ply)
 
                 ply.Inventory[v.slot] = {item = v.item, amount = v.amount}
 
-
-                net.Start("Inventory.AddItem")
-
-                net.WriteUInt(tonumber(v.slot), 8)
-
-                net.WriteString(v.item)
-
-                net.WriteUInt(tonumber(v.amount), 32)
-
-                net.Send(ply)
-
             end
+
+            net.Start("Inventory.AddInitItem")
+
+            net.WriteTable(ply.Inventory)
+
+            net.Send(ply)
 
         end
 
@@ -290,7 +287,6 @@ net.Receive("Inventory.EquipItem", function(len, ply)
 
 
     if ply.Inventory[slot] and ply.Inventory[slot].item == class then
-
 
         local equipFunction = Inventory.EquipFunctions[Inventory.Items[class].category](class, ply)
 

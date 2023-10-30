@@ -9,6 +9,19 @@ net.Receive("Inventory.Initialize", function()
 end)
 
 
+// Add an item to the local players inventory when initalized
+net.Receive("Inventory.AddInitItem", function()
+
+    local data = net.ReadTable()
+
+    for k, v in pairs(data) do
+            
+        LocalPlayer().Inventory[tonumber(k)] = {item = tostring(v.item), amount = tonumber(v.amount)}
+
+    end
+
+end)
+
 // Add an item to the local players inventory
 net.Receive("Inventory.AddItem", function()
 
