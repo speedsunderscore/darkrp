@@ -224,6 +224,89 @@ net.Receive("Mining.UseBench", function()
 
                 end
 
+
+                local itemName = CheadleUI.Panel(craftableDraw, Color(255,255,255))
+
+                CheadleUI.SetSize(itemName, 100, 15)
+
+                itemName.Paint = function(self, w, h)
+
+                    local size = 15
+
+                    while size >=1 do 
+
+                        surface.SetFont(CheadleUI.GetFont("Montserrat", size))
+
+                        local textWidth, textHeight = surface.GetTextSize(v.name)
+
+                        if textWidth <= w and textHeight <= h then 
+                            
+                            break 
+                        
+                        end
+
+                        size = size - 1
+
+                    end
+
+                    draw.RoundedBoxEx(0, 0, 0, w, h, Color(0,0,0,255), true, true, false, false)
+
+                    draw.SimpleText(v.name, CheadleUI.GetFont("Montserrat", size), w/2, h/2, Color(255,255,255), TEXT_ALIGN_CENTER, TEXT_ALIGN_CENTER)
+
+                end
+
+
+                local buttonPanel = vgui.Create("DButton", craftableDraw)
+
+                buttonPanel:SetSize(craftableDraw:GetWide(), craftableDraw:GetTall())
+
+                buttonPanel:SetText("")
+
+                buttonPanel.Paint = function(self, w, h)
+
+                end
+
+
+                CheadleUI.Popup(buttonPanel, function(x, y)
+
+                    surface.SetFont(CheadleUI.GetFont("Montserrat", 18))
+
+                    local textWidth, textHeight = surface.GetTextSize(v.name)
+
+                    local addYBar = 0
+
+                    local addYText = 0
+
+                    local padding = 3
+
+                    local recipeWidth = 0
+
+                    for k, v in pairs(v.recipe) do  
+
+                        surface.SetFont(CheadleUI.GetFont("Montserrat", 14))
+
+                        local width, _ = surface.GetTextSize(v .. "x " .. Mining.Minerals[k].name)
+
+                        recipeWidth = math.max(recipeWidth, width)
+
+                        addYBar = addYBar + 11
+
+                    end
+
+                    draw.RoundedBox(4, x - padding + 15, y - padding, padding * 2 + textWidth + (recipeWidth/3), textHeight + padding * 2 + addYBar + 3, Color(40,40,40))
+
+                    draw.SimpleText(v.name, CheadleUI.GetFont("Montserrat", 18), x + 15, y, Color(221,221,221), TEXT_ALIGN_LEFT, TEXT_ALIGN_TOP)
+
+                    for k, v in pairs(v.recipe) do
+
+                        draw.SimpleText(v .. "x " .. Mining.Minerals[k].name, CheadleUI.GetFont("Montserrat", 14), x + 15, y - 1 + addYText + textHeight, Mining.Minerals[k].color, TEXT_ALIGN_LEFT, TEXT_ALIGN_TOP)
+
+                        addYText = addYText + 11
+
+                    end
+
+                end)
+
             end
 
         end
