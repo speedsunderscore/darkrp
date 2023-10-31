@@ -16,3 +16,5 @@ UPDATE 31/10/2023
 - Crafting tab
 - Create categories
 - Create craftables
+- Item recipes
+- Recipe popup
