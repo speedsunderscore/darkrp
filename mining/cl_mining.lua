@@ -267,6 +267,26 @@ net.Receive("Mining.UseBench", function()
                 end
 
 
+                buttonPanel.DoClick = function()
+
+                    CheadleUI.DermaQuery(
+
+                        "Crafting - " .. v.name,
+
+                        "Are you sure you want to craft a " .. v.name .. "?",
+
+                        "Yes",
+
+                        function() end,
+                        
+                        "No",
+                        
+                        function() end
+                    )
+
+                end
+
+
                 CheadleUI.Popup(buttonPanel, function(x, y)
 
                     surface.SetFont(CheadleUI.GetFont("Montserrat", 18))
@@ -306,6 +326,7 @@ net.Receive("Mining.UseBench", function()
                     end
 
                 end)
+                
 
             end
 
