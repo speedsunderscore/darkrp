@@ -377,3 +377,58 @@ end)
 function CheadleUI.PlaySound(soundName)
         sound.PlayFile(soundName, "", function() end)
 end
+
+
+function CheadleUI.DermaQuery(title, message, firstOption, firstCallback, secondOption, secondCallback)
+
+    local frame = CheadleUI.Frame(ScrW() * 0.16, ScrH() * 0.1, title, CheadleUI.GetFont("Montserrat", 20), Color(20,20,20), Color(40,40,40), true, false)
+
+    local backPanel = CheadleUI.Panel(frame, Color(15,15,15))
+
+    CheadleUI.SetSize(backPanel, 98.2, 75)
+
+    CheadleUI.SetPos(backPanel, 1, 0, 98, 4)
+
+
+    backPanel.Paint = function(self, w, h)
+
+        draw.RoundedBox(4, 0, 0, w, h, Color(15,15,15))
+
+        draw.SimpleText(message, CheadleUI.GetFont("Montserrat", 15), w/2, h*0.25, Color(255,255,255), TEXT_ALIGN_CENTER, TEXT_ALIGN_CENTER)
+
+    end
+
+    local firstButton = CheadleUI.Button(backPanel, firstOption, CheadleUI.GetFont("Montserrat", 15), Color(40,40,40), Color(255,255,255))
+
+    CheadleUI.SetSize(firstButton, 25, 25)
+
+    CheadleUI.SetPos(firstButton, 5, 0, 80, 4)
+
+    CheadleUI.HoverEffect(firstButton, Color(15,15,15), Color(35,35,35), 200)
+
+    firstButton.DoClick = function()
+
+        firstCallback()
+
+        frame:Remove()
+
+    end
+
+
+    local secondButton = CheadleUI.Button(backPanel, secondOption, CheadleUI.GetFont("Montserrat", 15), Color(40,40,40), Color(255,255,255))
+
+    CheadleUI.SetSize(secondButton, 25, 25)
+
+    CheadleUI.SetPos(secondButton, 95, 2, 80, 4)
+
+    CheadleUI.HoverEffect(secondButton, Color(15,15,15), Color(35,35,35), 200)
+
+    secondButton.DoClick = function()
+
+        secondCallback()
+
+        frame:Remove()
+
+    end
+
+end
