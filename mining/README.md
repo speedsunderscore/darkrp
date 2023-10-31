@@ -11,3 +11,8 @@ UPDATE 30/10/2023
 - Add/Removing ores
 - Networking
 - Buy / Sell button
+
+UPDATE 31/10/2023
+- Crafting tab
+- Create categories
+- Create craftables
