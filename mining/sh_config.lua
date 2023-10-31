@@ -216,7 +216,9 @@ Mining.CreateCraftable("Bug Bait", {
 
         rot = Angle(0, 0, 0)
 
-    }
+    },
+
+    recipe = {["gold_ore"] = 1, ["iron_ore"] = 1}
 
 })
 
@@ -237,6 +239,8 @@ Mining.CreateCraftable("S.L.A.M", {
 
         rot = Angle(0, -18, -38)
 
-    }
+    },
+
+    recipe = {["gold_ore"] = 3, ["iron_ore"] = 1, ["diamond_ore"] = 5}
 
 })
