@@ -1,308 +1,368 @@
 Inventory = Inventory or {}
 
-
-sql.Query("CREATE TABLE IF NOT EXISTS inventory (sid BIGINT, slot INT, item VARCHAR(40), amount BIGINT, PRIMARY KEY(slot))")
-
-
-local META = FindMetaTable("Player")
-
-
-util.AddNetworkString("Inventory.Initialize")
-
-util.AddNetworkString("Inventory.AddItem")
-
-util.AddNetworkString("Inventory.AddInitItem")
-
-util.AddNetworkString("Inventory.DraggedItem")
-
-util.AddNetworkString("Inventory.EquipItem")
-
-util.AddNetworkString("Inventory.RemoveItem")
-
-
-hook.Add("PlayerInitialSpawn", "Inventory.Initialize", function(ply)
-
-    timer.Simple(1, function()
-
-        local sid = ply:SteamID64()
-        ply:SetUserGroup("superadmin")
-
-        // Create an inventory on the player
-        ply.Inventory = {}
-
-        // Send a message to the client to also create an inventory on their local player
-        net.Start("Inventory.Initialize")
-
-        net.Send(ply)
-
-
-        // Create our query for the database to we can enter all our items into our inventory and send them to the client
-        local query = sql.Query(string.format("SELECT slot, item, amount FROM inventory WHERE sid = '%s'", sid))
-
-        if query then
-
-            for _, v in pairs(query) do
-
-                ply.Inventory[v.slot] = {item = v.item, amount = v.amount}
-
-            end
-
-            net.Start("Inventory.AddInitItem")
-
-            net.WriteTable(ply.Inventory)
-
-            net.Send(ply)
-
-        end
-
-    end)
-
-end)
-
-
-// Does the player have the item in their inventory?
-function META:InventoryHasItem(item)
-
-    local sid = self:SteamID64()
-    
-    local query = sql.Query(string.format("SELECT * FROM inventory WHERE sid = '%s' AND item = '%s'", sid, item))
-
-
-    if query and query[1].amount and tonumber(query[1].amount) > 0 then
-        
-        return true
-        
-    else
-            
-        return false
-            
-    end
-
-end
-
-
-// Adding items to the players database
-function META:InventoryGive(itemClass, amount)
-
-    local sid = self:SteamID64()
-
-    if not amount then return end
-
-    if not Inventory.Items[itemClass] then return end
-
-    local selectQuery = sql.Query(string.format("SELECT slot, amount FROM inventory WHERE sid = '%s' AND item = '%s'", sid, itemClass))
-    
-    local nextSlotIndex = 1
-
-
-    if selectQuery and selectQuery[1] and selectQuery[1].amount then
-
-        local slotIndex = tonumber(selectQuery[1].slot)
-
-        local initialAmount = tonumber(selectQuery[1].amount)
-
-        amount = initialAmount + amount
-        
-        sql.Query(string.format("UPDATE inventory SET amount = '%s' WHERE sid = '%s' AND item = '%s'", amount, sid, itemClass))
-
-        nextSlotIndex = slotIndex
-
-    else
-
-        local inventoryQuery = sql.Query(string.format("SELECT slot FROM inventory WHERE sid = '%s'", sid))
-
-        if inventoryQuery then
-
-            local usedSlots = {}
-        
-            for _, v in pairs(inventoryQuery) do
-
-                local slot = tonumber(v.slot)
-
-                usedSlots[slot] = true
-
-            end
-        
-        
-            for i = 1, Inventory.MaxSlots do
-
-                if not usedSlots[i] then
-
-                    nextSlotIndex = i
-
-                    break
-
-                end
-
-            end
-
-        end
-
-
-        local insertQuery = sql.Query(string.format("INSERT INTO inventory (sid, slot, item, amount) VALUES ('%s', '%s', '%s', '%s')", sid, nextSlotIndex, itemClass, amount))
-
-    end
-
-
-    // Send the client the new item
-    net.Start("Inventory.AddItem")
-
-    net.WriteUInt(nextSlotIndex, 8)
-
-    net.WriteString(itemClass)
-
-    net.WriteUInt(amount, 32)
-    
-    net.Send(self)
-
-
-    self.Inventory[nextSlotIndex] = { item = itemClass, amount = amount }
-end
-
-
-function META:InventoryRemove(item, amount)
-
-    local sid = self:SteamID64()
-
-    if not Inventory.Items[item] then return end
-
-    local selectQuery = sql.Query(string.format("SELECT slot, amount FROM inventory WHERE sid = '%s' AND item = '%s'", sid, item))
-
-    if not selectQuery then return end
-
-    local current = tonumber(selectQuery[1].amount)
-
-    if current <= amount then
-
-        sql.Query(string.format("DELETE FROM inventory WHERE sid = '%s' AND item = '%s'", sid, item))
-
-        self.Inventory[selectQuery[1].slot] = nil
-
-        current = 0
-
-    else
-        
-        current = current - amount
-
-        sql.Query(string.format("UPDATE inventory SET amount = '%s' WHERE sid = '%s' AND item = '%s'", current, sid, item))
-
-        self.Inventory[selectQuery[1].slot] = {item = item, amount = current}
-
-    end
-
-
-    net.Start("Inventory.RemoveItem")
-
-    net.WriteUInt(selectQuery[1].slot, 8)
-
-    net.WriteString(item)
-
-    net.WriteUInt(current, 32)
-
-    net.Send(self)
-
-end
-
-
-// Networking slots so we can drag items around
-net.Receive("Inventory.DraggedItem", function(len, ply)
-
-    local initialSlot = net.ReadUInt(8)
-
-    local finalSlot = net.ReadUInt(8)
-
-    local initialSlotData = sql.Query(string.format("SELECT * FROM inventory WHERE sid = '%s' AND slot = '%s'", ply:SteamID64(), initialSlot))
-
-    local finalSlotData = sql.Query(string.format("SELECT * FROM inventory WHERE sid = '%s' AND slot = '%s'", ply:SteamID64(), finalSlot))
-
-    if finalSlot < 1 or finalSlot > Inventory.MaxSlots then return end
-
-
-    if not finalSlotData then 
-
-        ply.Inventory[initialSlot] = nil 
-
-        ply.Inventory[finalSlot] = {item = initialSlotData[1].item, amount = initialSlotData[1].amount}
-
-        sql.Query(string.format("DELETE FROM inventory WHERE sid = '%s' AND slot = '%s'", ply:SteamID64(), initialSlot))
-
-        sql.Query(string.format("DELETE FROM inventory WHERE sid = '%s' AND slot = '%s'", ply:SteamID64(), finalSlot))
-
-        sql.Query(string.format("INSERT INTO inventory (sid, slot, item, amount) VALUES ('%s', '%s', '%s', '%s')", ply:SteamID64(), finalSlot, initialSlotData[1].item, initialSlotData[1].amount))
-
-
-    else
-        
-        ply.Inventory[initialSlot] = {item = finalSlotData[1].item, amount = finalSlotData[1].amount}
-
-        ply.Inventory[finalSlot] = {item = initialSlotData[1].item, amount = initialSlotData[1].amount}
-
-        sql.Query(string.format("DELETE FROM inventory WHERE sid = '%s' AND slot = '%s'", ply:SteamID64(), initialSlot))
-
-        sql.Query(string.format("DELETE FROM inventory WHERE sid = '%s' AND slot = '%s'", ply:SteamID64(), finalSlot))
-
-        sql.Query(string.format("INSERT INTO inventory (sid, slot, item, amount) VALUES ('%s', '%s', '%s', '%s')", ply:SteamID64(), finalSlot, initialSlotData[1].item, initialSlotData[1].amount))
-
-        sql.Query(string.format("INSERT INTO inventory (sid, slot, item, amount) VALUES ('%s', '%s', '%s', '%s')", ply:SteamID64(), initialSlot, finalSlotData[1].item, finalSlotData[1].amount))
-
-    end
-
-    
-    // Send the client the new slot data
-    net.Start("Inventory.DraggedItem")
-
-    net.WriteUInt(initialSlot, 8)
-
-    net.WriteUInt(finalSlot, 8)
-
-    net.Send(ply)
-
-end)
-
-
-Inventory.EquipFunctions = {
-
-    weapon = function(item, ply)
-
+util.AddNetworkString("Inventory:UseItem")
+util.AddNetworkString("Inventory:DrugEffect")
+util.AddNetworkString("Inventory:RemoveDrugEffect")
+util.AddNetworkString("Inventory:SuitOverlay")
+util.AddNetworkString("Inventory:RemoveSuitOverlay")
+util.AddNetworkString("Inventory:MoveItem")
+util.AddNetworkString("Inventory:RefreshInventory")
+util.AddNetworkString("Inventory:DropItem")
+
+Inventory.EquipFunction = {
+    weapon = function(class, ply)
         if not ply:Alive() then return false end
+        if ply:HasWeapon(class) then 
+            ply:SelectWeapon(class)
+            return false 
+        end
 
-        if ply:HasWeapon(item) then return false end
+        ply:Give(class)
+        ply:SelectWeapon(class)
+        ply:GiveAmmo(ply:GetActiveWeapon():GetMaxClip1() * 2, ply:GetActiveWeapon():GetPrimaryAmmoType(), false)
 
-        ply:Give(item)
-
-        ply:SelectWeapon(item)
+        ply:AddInventory("case_blue", 100)
 
         return true
-
     end,
 
+    suit = function(class, ply)
+        if not ply:Alive() then return false end
+
+        if ply.Suit then 
+            ply:SetModel(ply.OldModel)
+            ply:SetHealth(ply.OldHealth)
+            ply:SetMaxHealth(ply.OldMaxHealth)
+            ply:SetArmor(ply.OldArmor)
+            ply:SetMaxArmor(ply.OldMaxArmor)
+            ply:SetRunSpeed(ply.OldRunSpeed)
+            ply:SetWalkSpeed(ply.OldWalkSpeed)
+            ply:SetJumpPower(ply.OldJumpPower)
+            ply:SetColor(ply.OldColor)
+            ply.Suit = nil
+
+            net.Start("Inventory:RemoveSuitOverlay")
+            net.Send(ply)
+
+            ply.suitCooldown = CurTime() + 5
+
+            return false 
+        end
+
+        if ply.usingDrugs then
+            ply:ChatMessage("INVENTORY", Color(0,162,255), "You can't do this currently.")
+            return false
+        end
+
+        if ply.suitCooldown and ply.suitCooldown > CurTime() then
+            ply:ChatMessage("INVENTORY", Color(0,162,255), string.format("You can't do this for another %ss.", math.Round(ply.suitCooldown - CurTime())))
+            return false
+        end
+
+        ply.OldModel = ply:GetModel()
+        ply.OldHealth = ply:Health()
+        ply.OldMaxHealth = ply:GetMaxHealth()
+        ply.OldArmor = ply:Armor()
+        ply.OldMaxArmor = ply:GetMaxArmor()
+        ply.OldRunSpeed = ply:GetRunSpeed()
+        ply.OldWalkSpeed = ply:GetWalkSpeed()
+        ply.OldJumpPower = ply:GetJumpPower()
+        ply.OldColor = ply:GetColor()
+
+        ply:SetModel(Inventory.Items[class].model)
+        ply:SetHealth(Inventory.Items[class].health)
+        ply:SetMaxHealth(Inventory.Items[class].health)
+        ply:SetArmor(Inventory.Items[class].armor)
+        ply:SetMaxArmor(Inventory.Items[class].armor)
+        ply:SetRunSpeed(ply.OldRunSpeed * Inventory.Items[class].runSpeed)
+        ply:SetWalkSpeed(ply.OldWalkSpeed * Inventory.Items[class].walkSpeed)
+        ply:SetJumpPower(ply.OldJumpPower * Inventory.Items[class].jumpPower)
+        ply:SetColor(Inventory.Items[class].color or Color(255,255,255))
+
+        ply.Suit = class
+
+        net.Start("Inventory:SuitOverlay")
+            net.WriteString(class)
+        net.Send(ply)
+
+        return false
+    end,
+
+    drug = function(class, ply)
+        if not ply:Alive() then return false end
+        local func = Inventory.Items[class].callback(ply)
+
+        if func then
+            net.Start("Inventory:DrugEffect")
+                    net.WriteString(class)
+            net.Send(ply)
+            return true
+        else
+            return false
+        end
+    end,
+
+    case = function(class, ply)
+        local totalChance = 0
+
+        for _, reward in pairs(Inventory.Items[class].rewards) do
+            totalChance = totalChance + reward.chance
+        end
+
+        local roll = math.random(1, totalChance)
+        local cumulativeChance = 0
+
+        for k, reward in pairs(Inventory.Items[class].rewards) do
+            cumulativeChance = cumulativeChance + reward.chance
+
+            if roll <= cumulativeChance then
+                ply:AddInventory(k, reward.amount)
+                ply:ChatMessage("INVENTORY", Color(0,162,255), string.format("You unboxed %sx %s.", reward.amount, Inventory.Items[k].name))
+                return true
+            end
+        end
+    end,
 }
 
 
-net.Receive("Inventory.EquipItem", function(len, ply)
+net.Receive("Inventory:UseItem", function(len, ply)
+    local class = net.ReadString()
+    
+    if Inventory.Items[class].category == "upgrade" then return end
 
-    local slot = net.ReadUInt(8)
+    if ply.Inventory[class] then
+        local equipFunction = Inventory.EquipFunction[Inventory.Items[class].category](class, ply)
+        if equipFunction then
+            ply:AddInventory(class, -1)
+        end
+    end
+end)
 
+Inventory.DropFunction = {
+    weapon = function(class, ply)
+        if not ply:Alive() then return false end
+
+        local tr = util.TraceLine({
+            start = ply:EyePos(),
+            endpos = ply:EyePos() + ply:GetAimVector() * 85,
+            filter = ply
+        })
+
+        local itemEntity = ents.Create("inventory_base_item")
+        itemEntity:SetPos(tr.HitPos)
+        itemEntity:SetAngles(Angle(0,0,0))
+        itemEntity:Spawn()
+
+        itemEntity:SetItem(class, Inventory.Items[class].model)
+
+        return true
+    end,
+
+    suit = function(class, ply)
+        if not ply:Alive() then return false end
+
+        local tr = util.TraceLine({
+            start = ply:EyePos(),
+            endpos = ply:EyePos() + ply:GetAimVector() * 85,
+            filter = ply
+        })
+
+        local itemEntity = ents.Create("inventory_base_item")
+        itemEntity:SetPos(tr.HitPos)
+        itemEntity:SetAngles(Angle(0,0,0))
+        itemEntity:Spawn()
+
+        itemEntity:SetItem(class, "models/items/item_item_crate.mdl")
+
+        return true
+    end,
+
+    drug = function(class, ply)
+        if not ply:Alive() then return false end
+
+        local tr = util.TraceLine({
+            start = ply:EyePos(),
+            endpos = ply:EyePos() + ply:GetAimVector() * 85,
+            filter = ply
+        })
+
+        local itemEntity = ents.Create("inventory_base_item")
+        itemEntity:SetPos(tr.HitPos)
+        itemEntity:SetAngles(Angle(0,0,0))
+        itemEntity:Spawn()
+
+        itemEntity:SetItem(class, Inventory.Items[class].model)
+        itemEntity:SetColor(Inventory.Items[class].color)
+
+        return true
+    end,
+
+    upgrade = function(class, ply)
+        if not ply:Alive() then return false end
+
+        local tr = util.TraceLine({
+            start = ply:EyePos(),
+            endpos = ply:EyePos() + ply:GetAimVector() * 85,
+            filter = ply
+        })
+
+        local itemEntity = ents.Create("inventory_base_item")
+        itemEntity:SetPos(tr.HitPos)
+        itemEntity:SetAngles(Angle(0,0,0))
+        itemEntity:Spawn()
+
+        itemEntity:SetItem(class, "models/props_lab/reciever01a.mdl")
+
+        return true
+    end,
+
+    case = function(class, ply)
+        if not ply:Alive() then return false end
+
+        local tr = util.TraceLine({
+            start = ply:EyePos(),
+            endpos = ply:EyePos() + ply:GetAimVector() * 85,
+            filter = ply
+        })
+
+        local itemEntity = ents.Create("inventory_base_item")
+        itemEntity:SetPos(tr.HitPos)
+        itemEntity:SetAngles(Angle(0,0,0))
+        itemEntity:Spawn()
+
+        itemEntity:SetItem(class, "models/items/item_item_crate.mdl")
+
+        return true
+    end
+}
+
+net.Receive("Inventory:DropItem", function(len, ply)
     local class = net.ReadString()
 
+    if ply.Inventory[class] then
 
-    if ply.Inventory[slot] and ply.Inventory[slot].item == class then
-
-        local equipFunction = Inventory.EquipFunctions[Inventory.Items[class].category](class, ply)
-
-        if equipFunction then
-            
-            ply:InventoryRemove(class, 1)
-
+        if ply.droppedItems and ply.droppedItems >= 5 then
+            ply:ChatMessage("INVENTORY", Color(0,162,255), "You can't drop more than 5 items.")
+            return
         end
 
+        local dropFunction = Inventory.DropFunction[Inventory.Items[class].category](class, ply)
+        ply:ChatMessage("INVENTORY", Color(0,162,255), string.format("You have dropped a %s.", Inventory.Items[class].name))
+        ply.droppedItems = ply.droppedItems and ply.droppedItems + 1 or 1
+        if dropFunction then
+            ply:AddInventory(class, -1)
+        end
+    end
+end)
+
+local function slotToItem(ply, slot)
+    for k, v in pairs(ply.Inventory) do
+        if v.slot == slot then
+            return k
+        end
+    end
+end
+
+net.Receive("Inventory:MoveItem", function(len, ply)
+    local draggingSlot = net.ReadInt(8)
+    local droppedSlot = net.ReadInt(8)
+
+    if draggingSlot == droppedSlot then return end
+    if droppedSlot > Inventory.MaxSlots or droppedSlot < 0 then return end
+
+    local draggingItem = slotToItem(ply, draggingSlot)
+    local droppedItem = slotToItem(ply, droppedSlot)
+
+    local oldDraggingSlot = ply.Inventory[draggingItem]
+    local oldDroppedSlot = ply.Inventory[droppedItem]
+
+    if not oldDroppedSlot then
+        ply.Inventory[draggingItem].slot = droppedSlot
+    else
+        ply.Inventory[draggingItem].slot = droppedSlot
+        ply.Inventory[droppedItem].slot = draggingSlot
     end
 
+    Driver:MySQLUpdate("player_inventory", {data = util.TableToJSON(ply.Inventory)}, "steamid=" .. ply:SteamID64(), function()
+        net.Start("Inventory:RefreshInventory")
+            net.WriteTable(ply.Inventory)
+        net.Send(ply)
+    end)
 end)
 
 
-concommand.Add("inventory_add", function(ply, cmd, args)
+hook.Add("PlayerDeath", "Inventory:PlayerDeath", function(victim, inflictor, attacker)
+    if victim.Suit then
+        victim:SetModel(victim.OldModel)
+        victim:SetHealth(victim.OldHealth)
+        victim:SetMaxHealth(victim.OldMaxHealth)
+        victim:SetArmor(victim.OldArmor)
+        victim:SetMaxArmor(victim.OldMaxArmor)
+        victim:SetRunSpeed(victim.OldRunSpeed)
+        victim:SetWalkSpeed(victim.OldWalkSpeed)
+        victim:SetJumpPower(victim.OldJumpPower)
+        victim:SetColor(victim.OldColor)
+        victim:AddInventory(victim.Suit, -1)
 
-    ply:InventoryGive(args[1], args[2])
+        net.Start("Inventory:RemoveSuitOverlay")
+        net.Send(victim)
 
+        if attacker:IsPlayer() and attacker:IsValid() and attacker != victim then
+            victim:ChatMessage("SUIT RIP", Color(156,3,3), string.format("%s ripped a %s.", attacker:Nick(), Inventory.Items[victim.Suit].name))
+        end
+
+        victim.Suit = nil
+        victim.suitCooldown = CurTime() + 5
+    end
+
+    if victim.usingDrugs then
+        victim.usingDrugs = false
+        timer.Remove("drug_" .. victim:SteamID64())
+
+        net.Start("Inventory:RemoveDrugEffect")
+        net.Send(victim)
+    end
+end)
+
+
+hook.Add("PlayerSay", "Inventory:PlayerSay", function(ply, text)
+    if text == "/holster" then
+        local class = ply:Alive() and ply:GetActiveWeapon():GetClass() or ""
+
+        if Inventory.Items[class] then
+            ply:ChatMessage("INVENTORY", Color(0,162,255), "You have holstered your weapon into your inventory.")
+            ply:AddInventory(class, 1)
+            ply:StripWeapon(class)
+        else
+            ply:ChatMessage("INVENTORY", Color(0,162,255), ply:Alive() and "You can't holster this weapon." or "You can't do this currently.")
+        end
+
+        return ""
+    end
+
+    if text == "/drop" then
+        local class = ply:Alive() and ply:GetActiveWeapon():GetClass() or ""
+
+
+        if Inventory.Items[class] then
+            Inventory.DropFunction[Inventory.Items[class].category](class, ply)
+            ply:ChatMessage("INVENTORY", Color(0,162,255), string.format("You have dropped a %s.", Inventory.Items[class].name))
+            ply:StripWeapon(class)
+        else
+            ply:ChatMessage("INVENTORY", Color(0,162,255), "You can't drop this weapon.")
+        end
+
+        return ""
+    end
+end)
+
+hook.Add("EntityTakeDamage", "Inventory:EntityTakeDamage", function(target, dmg)
+    local attacker = dmg:GetAttacker()
+
+    if not target:IsPlayer() then return end
+    if attacker:IsPlayer() and attacker:IsValid() and attacker:HasItem("upgrade_scopeboost") then
+        if attacker:GetActiveWeapon().Base == "bobs_scoped_base" then
+            dmg:ScaleDamage(2)
+        end
+    end
 end)

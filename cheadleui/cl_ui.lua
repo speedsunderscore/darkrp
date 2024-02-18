@@ -114,7 +114,8 @@ function CheadleUI.Frame(w, h, title, font, color, color_top, closeBtn, blur)
         end
         draw.RoundedBox(4, 0, 0, w1, h1, color)
         if color_top then
-            draw.RoundedBox(4, 0, 0, w1, titleH, color_top)
+            --draw.RoundedBox(4, 0, 0, w1, titleH, color_top)
+            draw.RoundedBoxEx(4, 0, 0, w1, titleH, color_top, true, true, false, false)
         end
     end
 
@@ -381,7 +382,7 @@ end
 
 function CheadleUI.DermaQuery(title, message, firstOption, firstCallback, secondOption, secondCallback)
 
-    local frame = CheadleUI.Frame(ScrW() * 0.16, ScrH() * 0.1, title, CheadleUI.GetFont("Montserrat", 20), Color(20,20,20), Color(40,40,40), true, false)
+    local frame = CheadleUI.Frame(ScrW() * 0.16, ScrH() * 0.1, title, CheadleUI.GetFont("Montserrat", 20), Color(20,20,20), Color(40,40,40), false, false)
 
     local backPanel = CheadleUI.Panel(frame, Color(15,15,15))
 
